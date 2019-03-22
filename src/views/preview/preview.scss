@@ -110,6 +110,9 @@ $stage-width: 480px;
 
         @media #{$medium-and-smaller} {
             flex-direction: row;
+            .inplace-input {
+                width: calc(100% - 4rem);
+            }
         }
 
         @media #{$small} {
@@ -141,7 +144,7 @@ $stage-width: 480px;
         flex-grow: 1;
 
         @media #{$medium-and-smaller} {
-            min-width: 100%;
+            min-width: calc(100% - 2rem);
         }
     }
 
@@ -149,7 +152,7 @@ $stage-width: 480px;
         $arrow-border-width: 1rem;
         display: block;
         position: absolute;
-        z-index: 1;
+        z-index: 5;
         margin-top: $arrow-border-width;
         border: 1px solid $active-gray;
         border-radius: 5px;
@@ -283,9 +286,11 @@ $stage-width: 480px;
             background-image: url("/svgs/project/remix-white.svg");
         }
     }
+    .remix-button.disabled {
+        opacity: .6;
+    }
 
     .remix-button.remixing {
-        opacity: .6;
 
         &:before {
             animation-name: remix-intro, remix-spin;
@@ -339,12 +344,24 @@ $stage-width: 480px;
                 flex-direction: row;
             }
         }
+
+        .wrappable-item {
+            margin-bottom: .5rem;
+        }
+    }
+
+    @media #{$medium-and-smaller} {
+        .preview-row {
+            margin-top: .5rem;
+            align-items: center;
+        }
     }
 
     .guiPlayer {
         display: inline-block;
         position: relative;
         width: $player-width;
+        z-index: 1;
 
         $alert-bg: rgba(255, 255, 255, .85);
         .project-info-alert {
@@ -356,6 +373,10 @@ $stage-width: 480px;
             padding: .75rem;
             text-align: center;
             font-size: .95rem;
+        }
+
+        &.fullscreen {
+            z-index: 200;
         }
 
         @media #{$small} {
@@ -377,7 +398,7 @@ $stage-width: 480px;
         flex-flow: column;
 
         @media #{$medium-and-smaller} {
-            margin-top: 1rem;
+            margin-top: .5rem;
             margin-left: 0;
             width: 100%;
         }
@@ -399,6 +420,7 @@ $stage-width: 480px;
 
         @media #{$medium-and-smaller} {
             flex-direction: row;
+            margin-bottom: .5rem;
         }
     }
 
@@ -530,7 +552,7 @@ $stage-width: 480px;
         margin-top: 1rem;
         background-color: $ui-blue-10percent;
         padding: 1rem 0;
-        min-height: 12rem;
+        min-height: 6rem;
     }
 
     .create-comment {
@@ -592,6 +614,7 @@ $stage-width: 480px;
         .thumbnail-column {
             display: inline-block;
             width: 100%;
+            max-width: 300px;
 
             /* TODO: the following can be transferred to
             src/components/thumbnailcolumn/thumbnailcolumn.scss

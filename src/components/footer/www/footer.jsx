@@ -13,7 +13,7 @@ require('./footer.scss');
 
 const Footer = props => (
     <FooterBox>
-        <MediaQuery maxWidth={frameless.tablet - 1}>
+        <MediaQuery maxWidth={frameless.mobileIntermediate - 1}>
             <div className="lists">
                 <dl>
                     <dd>
@@ -51,7 +51,7 @@ const Footer = props => (
                 </dl>
             </div>
         </MediaQuery>
-        <MediaQuery minWidth={frameless.tablet}>
+        <MediaQuery minWidth={frameless.mobileIntermediate}>
             <div className="lists">
                 <dl>
                     <dt>
@@ -78,7 +78,7 @@ const Footer = props => (
                         </a>
                     </dd>
                     <dd>
-                        <a href="/info/credits">
+                        <a href="/credits">
                             <FormattedMessage id="general.credits" />
                         </a>
                     </dd>

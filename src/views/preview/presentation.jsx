@@ -17,6 +17,7 @@ const FlexRow = require('../../components/flex-row/flex-row.jsx');
 const Button = require('../../components/forms/button.jsx');
 const Avatar = require('../../components/avatar/avatar.jsx');
 const Banner = require('./banner.jsx');
+const CensoredMessage = require('./censored-message.jsx');
 const ModInfo = require('./mod-info.jsx');
 const RemixCredit = require('./remix-credit.jsx');
 const RemixList = require('./remix-list.jsx');
@@ -24,10 +25,12 @@ const Stats = require('./stats.jsx');
 const StudioList = require('./studio-list.jsx');
 const Subactions = require('./subactions.jsx');
 const InplaceInput = require('../../components/forms/inplace-input.jsx');
+const ToggleSlider = require('../../components/forms/toggle-slider.jsx');
 const TopLevelComment = require('./comment/top-level-comment.jsx');
 const ComposeComment = require('./comment/compose-comment.jsx');
 const ExtensionChip = require('./extension-chip.jsx');
 const thumbnailUrl = require('../../lib/user-thumbnail');
+const FormsyProjectUpdater = require('./formsy-project-updater.jsx');
 
 const projectShape = require('./projectshape.jsx').projectShape;
 require('./preview.scss');
@@ -67,9 +70,11 @@ const PreviewPresentation = ({
     faved,
     favoriteCount,
     intl,
+    isAdmin,
     isFullScreen,
     isLoggedIn,
     isNewScratcher,
+    isProjectLoaded,
     isRemixing,
     isScratcher,
     isShared,
@@ -88,8 +93,10 @@ const PreviewPresentation = ({
     onFavoriteClicked,
     onGreenFlag,
     onLoadMore,
+    onLoadMoreReplies,
     onLoveClicked,
     onOpenAdminPanel,
+    onProjectLoaded,
     onRemix,
     onRemixing,
     onReportClicked,
@@ -99,10 +106,10 @@ const PreviewPresentation = ({
     onRestoreComment,
     onSeeAllComments,
     onSeeInside,
+    onSetProjectThumbnailer,
     onShare,
     onToggleComments,
     onToggleStudio,
-    onUpdate,
     onUpdateProjectId,
     onUpdateProjectThumbnail,
     originalInfo,
@@ -119,6 +126,7 @@ const PreviewPresentation = ({
     showAdminPanel,
     showModInfo,
     singleCommentId,
+    userOwnsProject,
     visibilityInfo
 }) => {
     const shareDate = ((projectInfo.history && projectInfo.history.shared)) ? projectInfo.history.shared : '';
@@ -128,12 +136,6 @@ const PreviewPresentation = ({
     const showNotesAndCredits = editable || projectInfo.description ||
         (!projectInfo.instructions && !projectInfo.description); // show if both are empty
 
-    // Allow embedding html in banner messages coming from the server
-    const embedCensorMessage = message => (
-        // eslint-disable-next-line react/no-danger
-        <span dangerouslySetInnerHTML={{__html: message}} />
-    );
-
     let banner;
     if (visibilityInfo.deleted) { // If both censored and deleted, prioritize deleted banner
         banner = (<Banner
@@ -141,9 +143,16 @@ const PreviewPresentation = ({
             message={<FormattedMessage id="project.deletedBanner" />}
         />);
     } else if (visibilityInfo.censored) {
+        const censoredMessage = (
+            <CensoredMessage
+                censoredByCommunity={visibilityInfo.censoredByCommunity}
+                messageHTML={visibilityInfo.message}
+                reshareable={visibilityInfo.reshareable}
+            />
+        );
         banner = (<Banner
             className="banner-danger"
-            message={embedCensorMessage(visibilityInfo.message)}
+            message={censoredMessage}
         />);
     } else if (justRemixed) {
         banner = (
@@ -179,6 +188,20 @@ const PreviewPresentation = ({
         }
     }
 
+    const extensionChips = (
+        <FlexRow className="extension-list">
+            {extensions && extensions.map(extension => (
+                <ExtensionChip
+                    action={extension.action}
+                    extensionL10n={extension.l10nId}
+                    extensionName={extension.name}
+                    hasStatus={extension.hasStatus}
+                    iconURI={extension.icon && `/svgs/project/${extension.icon}`}
+                    key={extension.name || extension.l10nId}
+                />
+            ))}
+        </FlexRow>
+    );
     return (
         <div className="preview">
             {showAdminPanel && (
@@ -213,22 +236,32 @@ const PreviewPresentation = ({
                                 </a>
                                 <div className="title">
                                     {editable ?
-                                        <Formsy onKeyPress={onKeyPress}>
-                                            <InplaceInput
-                                                className="project-title"
-                                                handleUpdate={onUpdate}
-                                                name="title"
-                                                validationErrors={{
-                                                    maxLength: intl.formatMessage({
-                                                        id: 'project.titleMaxLength'
-                                                    })
-                                                }}
-                                                validations={{
-                                                    maxLength: 100
-                                                }}
-                                                value={projectInfo.title}
-                                            />
-                                        </Formsy> :
+                                        <FormsyProjectUpdater
+                                            field="title"
+                                            initialValue={projectInfo.title}
+                                        >
+                                            {(value, ref, handleUpdate) => (
+                                                <Formsy
+                                                    ref={ref}
+                                                    onKeyPress={onKeyPress}
+                                                >
+                                                    <InplaceInput
+                                                        className="project-title"
+                                                        handleUpdate={handleUpdate}
+                                                        name="title"
+                                                        validationErrors={{
+                                                            maxLength: intl.formatMessage({
+                                                                id: 'project.titleMaxLength'
+                                                            })
+                                                        }}
+                                                        validations={{
+                                                            maxLength: 100
+                                                        }}
+                                                        value={value}
+                                                    />
+                                                </Formsy>
+                                            )}
+                                        </FormsyProjectUpdater> :
                                         <React.Fragment>
                                             <div
                                                 className="project-title no-edit"
@@ -250,10 +283,11 @@ const PreviewPresentation = ({
                                             className={classNames([
                                                 'remix-button',
                                                 {
-                                                    remixing: isRemixing,
-                                                    spin: isRemixing
+                                                    disabled: isRemixing || !isProjectLoaded,
+                                                    remixing: isRemixing
                                                 }
                                             ])}
+                                            disabled={isRemixing || !isProjectLoaded}
                                             title={intl.formatMessage({id: 'project.remixButton.altText'})}
                                             onClick={onRemix}
                                         >
@@ -274,7 +308,12 @@ const PreviewPresentation = ({
                             </MediaQuery>
                         </FlexRow>
                         <FlexRow className="preview-row">
-                            <div className="guiPlayer">
+                            <div
+                                className={classNames(
+                                    'guiPlayer',
+                                    {fullscreen: isFullScreen}
+                                )}
+                            >
                                 {showCloudDataAlert && (
                                     <FlexRow className="project-info-alert">
                                         <FormattedMessage id="project.cloudDataAlert" />
@@ -301,56 +340,56 @@ const PreviewPresentation = ({
                                     projectHost={projectHost}
                                     projectId={projectId}
                                     onGreenFlag={onGreenFlag}
+                                    onProjectLoaded={onProjectLoaded}
                                     onRemixing={onRemixing}
+                                    onSetProjectThumbnailer={onSetProjectThumbnailer}
                                     onUpdateProjectId={onUpdateProjectId}
                                     onUpdateProjectThumbnail={onUpdateProjectThumbnail}
                                 />
                             </div>
-                            <MediaQuery maxWidth={frameless.tablet - 1}>
+                            <MediaQuery maxWidth={frameless.tabletPortrait - 1}>
                                 <FlexRow className="preview-row force-center">
-                                    <Stats
-                                        faved={faved}
-                                        favoriteCount={favoriteCount}
-                                        loveCount={loveCount}
-                                        loved={loved}
-                                        projectInfo={projectInfo}
-                                        onFavoriteClicked={onFavoriteClicked}
-                                        onLoveClicked={onLoveClicked}
-                                    />
-                                    <Subactions
-                                        addToStudioOpen={addToStudioOpen}
-                                        canReport={canReport}
-                                        projectInfo={projectInfo}
-                                        reportOpen={reportOpen}
-                                        shareDate={shareDate}
-                                        onAddToStudioClicked={onAddToStudioClicked}
-                                        onAddToStudioClosed={onAddToStudioClosed}
-                                        onCopyProjectLink={onCopyProjectLink}
-                                        onReportClicked={onReportClicked}
-                                        onReportClose={onReportClose}
-                                        onReportSubmit={onReportSubmit}
-                                        onToggleStudio={onToggleStudio}
-                                    />
+                                    <div className="wrappable-item">
+                                        <Stats
+                                            faved={faved}
+                                            favoriteCount={favoriteCount}
+                                            loveCount={loveCount}
+                                            loved={loved}
+                                            projectInfo={projectInfo}
+                                            onFavoriteClicked={onFavoriteClicked}
+                                            onLoveClicked={onLoveClicked}
+                                        />
+                                    </div>
+                                    <div className="wrappable-item">
+                                        <Subactions
+                                            addToStudioOpen={addToStudioOpen}
+                                            canReport={canReport}
+                                            isAdmin={isAdmin}
+                                            projectInfo={projectInfo}
+                                            reportOpen={reportOpen}
+                                            shareDate={shareDate}
+                                            userOwnsProject={userOwnsProject}
+                                            onAddToStudioClicked={onAddToStudioClicked}
+                                            onAddToStudioClosed={onAddToStudioClosed}
+                                            onCopyProjectLink={onCopyProjectLink}
+                                            onReportClicked={onReportClicked}
+                                            onReportClose={onReportClose}
+                                            onReportSubmit={onReportSubmit}
+                                            onToggleStudio={onToggleStudio}
+                                        />
+                                    </div>
                                 </FlexRow>
                             </MediaQuery>
                             <FlexRow className="project-notes">
                                 <RemixCredit projectInfo={parentInfo} />
                                 <RemixCredit projectInfo={originalInfo} />
                                 {/*  eslint-disable max-len */}
-                                <MediaQuery maxWidth={frameless.tablet - 1}>
-                                    <FlexRow className="preview-row">
-                                        <FlexRow className="extension-list">
-                                            {extensions && extensions.map(extension => (
-                                                <ExtensionChip
-                                                    extensionL10n={extension.l10nId}
-                                                    extensionName={extension.name}
-                                                    hasStatus={extension.hasStatus}
-                                                    iconURI={extension.icon && `/svgs/project/${extension.icon}`}
-                                                    key={extension.name || extension.l10nId}
-                                                />
-                                            ))}
+                                <MediaQuery maxWidth={frameless.tabletPortrait - 1}>
+                                    {(extensions && extensions.length) ? (
+                                        <FlexRow className="preview-row">
+                                            {extensionChips}
                                         </FlexRow>
-                                    </FlexRow>
+                                    ) : null}
                                 </MediaQuery>
                                 {showInstructions && (
                                     <div className="description-block">
@@ -358,37 +397,45 @@ const PreviewPresentation = ({
                                             <FormattedMessage id="project.instructionsLabel" />
                                         </div>
                                         {editable ?
-                                            <Formsy
-                                                className="project-description-form"
-                                                onKeyPress={onKeyPress}
+                                            <FormsyProjectUpdater
+                                                field="instructions"
+                                                initialValue={projectInfo.instructions}
                                             >
-                                                <InplaceInput
-                                                    className={classNames(
-                                                        'project-description-edit',
-                                                        {remixes: parentInfo && parentInfo.author}
-                                                    )}
-                                                    handleUpdate={onUpdate}
-                                                    name="instructions"
-                                                    placeholder={intl.formatMessage({
-                                                        id: 'project.descriptionPlaceholder'
-                                                    })}
-                                                    type="textarea"
-                                                    validationErrors={{
-                                                        maxLength: intl.formatMessage({
-                                                            id: 'project.descriptionMaxLength'
-                                                        })
-                                                    }}
-                                                    validations={{
-                                                        maxLength: 5000
-                                                    }}
-                                                    value={projectInfo.instructions}
-                                                />
-                                            </Formsy> :
+                                                {(value, ref, handleUpdate) => (
+                                                    <Formsy
+                                                        className="project-description-form"
+                                                        ref={ref}
+                                                        onKeyPress={onKeyPress}
+                                                    >
+                                                        <InplaceInput
+                                                            className={classNames(
+                                                                'project-description-edit',
+                                                                {remixes: parentInfo && parentInfo.author}
+                                                            )}
+                                                            handleUpdate={handleUpdate}
+                                                            name="instructions"
+                                                            placeholder={intl.formatMessage({
+                                                                id: 'project.descriptionPlaceholder'
+                                                            })}
+                                                            type="textarea"
+                                                            validationErrors={{
+                                                                maxLength: intl.formatMessage({
+                                                                    id: 'project.descriptionMaxLength'
+                                                                })
+                                                            }}
+                                                            validations={{
+                                                                maxLength: 5000
+                                                            }}
+                                                            value={value}
+                                                        />
+                                                    </Formsy>
+                                                )}
+                                            </FormsyProjectUpdater> :
                                             <div className="project-description">
                                                 {decorateText(projectInfo.instructions, {
                                                     usernames: true,
                                                     hashtags: true,
-                                                    scratchLinks: false
+                                                    scratchLinks: true
                                                 })}
                                             </div>
                                         }
@@ -400,38 +447,46 @@ const PreviewPresentation = ({
                                             <FormattedMessage id="project.notesAndCreditsLabel" />
                                         </div>
                                         {editable ?
-                                            <Formsy
-                                                className="project-description-form"
-                                                onKeyPress={onKeyPress}
+                                            <FormsyProjectUpdater
+                                                field="description"
+                                                initialValue={projectInfo.description}
                                             >
-                                                <InplaceInput
-                                                    className={classNames(
-                                                        'project-description-edit',
-                                                        'last',
-                                                        {remixes: parentInfo && parentInfo.author}
-                                                    )}
-                                                    handleUpdate={onUpdate}
-                                                    name="description"
-                                                    placeholder={intl.formatMessage({
-                                                        id: 'project.notesPlaceholder'
-                                                    })}
-                                                    type="textarea"
-                                                    validationErrors={{
-                                                        maxLength: intl.formatMessage({
-                                                            id: 'project.descriptionMaxLength'
-                                                        })
-                                                    }}
-                                                    validations={{
-                                                        maxLength: 5000
-                                                    }}
-                                                    value={projectInfo.description}
-                                                />
-                                            </Formsy> :
+                                                {(value, ref, handleUpdate) => (
+                                                    <Formsy
+                                                        className="project-description-form"
+                                                        ref={ref}
+                                                        onKeyPress={onKeyPress}
+                                                    >
+                                                        <InplaceInput
+                                                            className={classNames(
+                                                                'project-description-edit',
+                                                                'last',
+                                                                {remixes: parentInfo && parentInfo.author}
+                                                            )}
+                                                            handleUpdate={handleUpdate}
+                                                            name="description"
+                                                            placeholder={intl.formatMessage({
+                                                                id: 'project.notesPlaceholder'
+                                                            })}
+                                                            type="textarea"
+                                                            validationErrors={{
+                                                                maxLength: intl.formatMessage({
+                                                                    id: 'project.descriptionMaxLength'
+                                                                })
+                                                            }}
+                                                            validations={{
+                                                                maxLength: 5000
+                                                            }}
+                                                            value={value}
+                                                        />
+                                                    </Formsy>
+                                                )}
+                                            </FormsyProjectUpdater> :
                                             <div className="project-description last">
                                                 {decorateText(projectInfo.description, {
                                                     usernames: true,
                                                     hashtags: true,
-                                                    scratchLinks: false
+                                                    scratchLinks: true
                                                 })}
                                             </div>
                                         }
@@ -440,7 +495,7 @@ const PreviewPresentation = ({
                                 {/*  eslint-enable max-len */}
                             </FlexRow>
                         </FlexRow>
-                        <MediaQuery minWidth={frameless.tablet}>
+                        <MediaQuery minWidth={frameless.tabletPortrait}>
                             <FlexRow className="preview-row">
                                 <Stats
                                     faved={faved}
@@ -455,9 +510,11 @@ const PreviewPresentation = ({
                                     addToStudioOpen={addToStudioOpen}
                                     canAddToStudio={canAddToStudio}
                                     canReport={canReport}
+                                    isAdmin={isAdmin}
                                     projectInfo={projectInfo}
                                     reportOpen={reportOpen}
                                     shareDate={shareDate}
+                                    userOwnsProject={userOwnsProject}
                                     onAddToStudioClicked={onAddToStudioClicked}
                                     onAddToStudioClosed={onAddToStudioClosed}
                                     onCopyProjectLink={onCopyProjectLink}
@@ -468,20 +525,12 @@ const PreviewPresentation = ({
                                 />
                             </FlexRow>
                         </MediaQuery>
-                        <MediaQuery minWidth={frameless.tablet}>
-                            <FlexRow className="preview-row">
-                                <FlexRow className="extension-list">
-                                    {extensions && extensions.map(extension => (
-                                        <ExtensionChip
-                                            extensionL10n={extension.l10nId}
-                                            extensionName={extension.name}
-                                            hasStatus={extension.hasStatus}
-                                            iconURI={extension.icon && `/svgs/project/${extension.icon}`}
-                                            key={extension.name || extension.l10nId}
-                                        />
-                                    ))}
+                        <MediaQuery minWidth={frameless.tabletPortrait}>
+                            {(extensions && extensions.length) ? (
+                                <FlexRow className="preview-row">
+                                    {extensionChips}
                                 </FlexRow>
-                            </FlexRow>
+                            ) : null}
                         </MediaQuery>
                         {showModInfo &&
                             <FlexRow className="preview-row">
@@ -502,15 +551,16 @@ const PreviewPresentation = ({
                                         <h4><FormattedMessage id="project.comments.header" /></h4>
                                         {canToggleComments ? (
                                             <div>
-                                                <label>
-                                                    <input
-                                                        checked={!projectInfo.comments_allowed}
-                                                        className="comments-allowed-input"
-                                                        type="checkbox"
-                                                        onChange={onToggleComments}
-                                                    />
-                                                    <FormattedMessage id="project.comments.turnOff" />
-                                                </label>
+                                                {projectInfo.comments_allowed ? (
+                                                    <FormattedMessage id="project.comments.toggleOn" />
+                                                ) : (
+                                                    <FormattedMessage id="project.comments.toggleOff" />
+                                                )}
+                                                <ToggleSlider
+                                                    checked={projectInfo.comments_allowed}
+                                                    className="comments-allowed-input"
+                                                    onChange={onToggleComments}
+                                                />
                                             </div>
                                         ) : null}
                                     </FlexRow>
@@ -550,12 +600,14 @@ const PreviewPresentation = ({
                                                 highlightedCommentId={singleCommentId}
                                                 id={comment.id}
                                                 key={comment.id}
+                                                moreRepliesToLoad={comment.moreRepliesToLoad}
                                                 parentId={comment.parent_id}
                                                 projectId={projectId}
                                                 replies={replies && replies[comment.id] ? replies[comment.id] : []}
                                                 visibility={comment.visibility}
                                                 onAddComment={onAddComment}
                                                 onDelete={onDeleteComment}
+                                                onLoadMoreReplies={onLoadMoreReplies}
                                                 onReport={onReportComment}
                                                 onRestore={onRestoreComment}
                                             />
@@ -620,9 +672,11 @@ PreviewPresentation.propTypes = {
     faved: PropTypes.bool,
     favoriteCount: PropTypes.number,
     intl: intlShape,
+    isAdmin: PropTypes.bool,
     isFullScreen: PropTypes.bool,
     isLoggedIn: PropTypes.bool,
     isNewScratcher: PropTypes.bool,
+    isProjectLoaded: PropTypes.bool,
     isRemixing: PropTypes.bool,
     isScratcher: PropTypes.bool,
     isShared: PropTypes.bool,
@@ -644,8 +698,10 @@ PreviewPresentation.propTypes = {
     onFavoriteClicked: PropTypes.func,
     onGreenFlag: PropTypes.func,
     onLoadMore: PropTypes.func,
+    onLoadMoreReplies: PropTypes.func,
     onLoveClicked: PropTypes.func,
     onOpenAdminPanel: PropTypes.func,
+    onProjectLoaded: PropTypes.func,
     onRemix: PropTypes.func,
     onRemixing: PropTypes.func,
     onReportClicked: PropTypes.func.isRequired,
@@ -655,10 +711,10 @@ PreviewPresentation.propTypes = {
     onRestoreComment: PropTypes.func,
     onSeeAllComments: PropTypes.func,
     onSeeInside: PropTypes.func,
+    onSetProjectThumbnailer: PropTypes.func,
     onShare: PropTypes.func,
     onToggleComments: PropTypes.func,
     onToggleStudio: PropTypes.func,
-    onUpdate: PropTypes.func,
     onUpdateProjectId: PropTypes.func,
     onUpdateProjectThumbnail: PropTypes.func,
     originalInfo: projectShape,
@@ -675,8 +731,11 @@ PreviewPresentation.propTypes = {
     showModInfo: PropTypes.bool,
     showUsernameBlockAlert: PropTypes.bool,
     singleCommentId: PropTypes.oneOfType([PropTypes.number, PropTypes.bool]),
+    userOwnsProject: PropTypes.bool,
     visibilityInfo: PropTypes.shape({
         censored: PropTypes.bool,
+        censoredByAdmin: PropTypes.bool,
+        censoredByCommunity: PropTypes.bool,
         message: PropTypes.string,
         deleted: PropTypes.bool,
         reshareable: PropTypes.bool

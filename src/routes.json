@@ -23,15 +23,13 @@
     {
         "name": "conference-index",
         "pattern": "^/conference/?(\\?.*)?$",
-        "routeAlias": "/conference(?!/201[4-5])",
-        "view": "conference/2018/index/index",
-        "title": "Scratch Conference",
-        "viewportWidth": "device-width"
+        "routeAlias": "/conference(?!/201[4-9])",
+        "redirect": "/conference/2019"
     },
     {
         "name": "conference-index-2017",
         "pattern": "^/conference/2017/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2017/index/index",
         "title": "Scratch Conference",
         "viewportWidth": "device-width"
@@ -39,21 +37,21 @@
     {
         "name": "conference-details-2018",
         "pattern": "^/conference/2018/:id/details/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2018/details/details",
         "title": "Event Details"
     },
     {
         "name": "conference-expectations-2018",
         "pattern": "^/conference/2018/expect/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2018/expect/expect",
         "title": "What to Expect"
     },
     {
         "name": "conference-index-2018",
         "pattern": "^/conference/2018/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2018/index/index",
         "title": "Scratch Conference",
         "viewportWidth": "device-width"
@@ -61,16 +59,24 @@
     {
         "name": "conference-plan-2018",
         "pattern": "^/conference/2018/plan/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2018/plan/plan",
         "title": "Plan Your Visit"
     },
     {
         "name": "conference-schedule-2018",
         "pattern": "^/conference/2018/schedule/?$",
-        "routeAlias": "/conference(?!/201[4-5])",
+        "routeAlias": "/conference(?!/201[4-9])",
         "view": "conference/2018/schedule/schedule",
         "title": "Conference Schedule"
+    },
+    {
+        "name": "conference-index-2019",
+        "pattern": "^/conference/2019/?$",
+        "routeAlias": "/conference(?!/201[4-9])",
+        "view": "conference/2019/index/index",
+        "title": "Scratch Conferences",
+        "viewportWidth": "device-width"
     },
     {
         "name": "connect",
@@ -205,7 +211,7 @@
         "title": "Scratch 1.4"
     },
     {
-        "name": "scratch2",
+        "name": "download-scratch2",
         "pattern": "^/download/scratch2/?(\\?.*)?$",
         "routeAlias": "/download/scratch2",
         "view": "download/scratch2/download",
@@ -224,6 +230,19 @@
         "routeAlias": "/?$",
         "view": "splash/splash",
         "title": "Imagine, Program, Share"
+    },
+    {
+        "name": "starter-projects",
+        "pattern": "^/starter-projects/?$",
+        "routeAlias": "/starter-projects/?$",
+        "view": "starter-projects/starter-projects",
+        "title": "Starter Projects"
+    },
+    {
+        "name": "starter-projects-redirect",
+        "pattern": "^/starter_projects/?$",
+        "routeAlias": "/starter_projects/?$",
+        "redirect": "/starter-projects"
     },
     {
         "name": "student-complete-registration",
@@ -272,7 +291,7 @@
         "pattern": "^/wedo/?$",
         "routeAlias": "/wedo/?$",
         "view": "wedo2/wedo2",
-        "title": "LEGO WeDo 2.0"
+        "title": "WeDo 2.0"
     },
     {
         "name": "wedo2-legacy",
@@ -406,6 +425,11 @@
         "pattern": "^/go/?(\\?.*)?$",
         "routeAlias": "/go/?\\??",
         "redirect": "/ideas"
+    },
+    {
+        "name": "all-tutorials-redirect",
+        "pattern": "^/tutorials/?$",
+        "redirect": "/projects/editor/?tutorial=all"
     },
     {
         "name": "create-tutorial-redirect",
